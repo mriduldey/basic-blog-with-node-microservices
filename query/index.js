@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const axios = require("axios");
 
 const app = express();
 app.use(express.json());
@@ -7,13 +8,8 @@ app.use(cors());
 
 const posts = {};
 
-app.get("/posts", (req, res) => {
-  res.send(posts);
-});
-
-app.post("/events", (req, res) => {
-  const { type, data } = req.body;
-
+const handleEvent = (type, data) => {
+  console.log("Received event: ", type);
   if (type === "PostCreated") {
     const { id, title } = data;
     posts[id] = { id, title, comments: [] };
@@ -21,7 +17,6 @@ app.post("/events", (req, res) => {
 
   if (type === "CommentCreated") {
     const { id, content, status, postId } = data;
-    console.log(2, id, content, postId, status);
     const post = posts[postId];
     post.comments.push({ id, content, status });
   }
@@ -33,10 +28,24 @@ app.post("/events", (req, res) => {
     comment.status = status;
     comment.content = content;
   }
+};
 
-  console.log(posts);
+app.get("/posts", (req, res) => {
+  res.send(posts);
 });
 
-app.listen(4002, () => {
+app.post("/events", (req, res) => {
+  const { type, data } = req.body;
+  handleEvent(type, data);
+  res.send({});
+});
+
+app.listen(4002, async () => {
   console.log("Query service started on 4002");
+
+  const res = await axios.get('http://localhost:4003/events');
+
+  for(let event of res.data) {
+    handleEvent(event.type, event.data);
+  }
 });
